@@ -55,6 +55,8 @@ def add_cors_headers(response):
 # ── Email delivery via Resend ──
 def send_report_email(email: str, company: str, report_html: str) -> None:
     """Send report as HTML attachment via Resend. Runs in background thread."""
+    import base64
+
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         print("RESEND_API_KEY not set, skipping email")
@@ -66,6 +68,7 @@ def send_report_email(email: str, company: str, report_html: str) -> None:
 
         safe_name = company.replace(" ", "_").lower()
         filename = f"cloud_audit_{safe_name}.html"
+        encoded_content = base64.b64encode(report_html.encode("utf-8")).decode("utf-8")
 
         resend.Emails.send({
             "from": os.environ.get("RESEND_FROM", "FinEye <audit@finabeo.com>"),
@@ -79,11 +82,12 @@ def send_report_email(email: str, company: str, report_html: str) -> None:
                 f'<p>Want to discuss the findings? <a href="https://finabeo.com">Book a call with Finabeo</a>.</p>'
                 f"<p>Best,<br>The FinEye Team</p>"
             ),
-            "attachments": [{"filename": filename, "content": report_html}],
+            "attachments": [{"filename": filename, "content": encoded_content}],
         })
         print(f"Report emailed to {email}")
     except Exception as e:
         print(f"Email send failed: {e}")
+        traceback.print_exc()
 
 
 def load_config() -> dict:
