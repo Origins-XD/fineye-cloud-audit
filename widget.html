@@ -1,0 +1,643 @@
+<!--
+  FinEye Cloud Audit — Framer Embed Widget
+  Paste this entire block into a Framer "Code Embed" component.
+  Configure API_URL below to point to your Railway deployment.
+-->
+<div id="fineye-audit-widget">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  #fineye-audit-widget {
+    --ink: #1a1a2e;
+    --ink-60: #1a1a2e99;
+    --ink-30: #1a1a2e4d;
+    --ink-12: #1a1a2e1f;
+    --ink-06: #1a1a2e0f;
+    --violet: #4F1AD6;
+    --violet-glow: #6733FF;
+    --violet-10: #4F1AD61a;
+    --violet-04: #4F1AD60a;
+    --surface: #FAFAF8;
+    --card: #FFFFFF;
+    --success: #16a34a;
+    --danger: #dc2626;
+
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  #fineye-audit-widget * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* ── Card ── */
+  .fe-card {
+    background: var(--card);
+    border: 1px solid var(--ink-06);
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fe-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--violet), var(--violet-glow), var(--violet));
+  }
+
+  .fe-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+
+  .fe-subtitle {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--ink-60);
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+
+  /* ── Fields ── */
+  .fe-field { margin-bottom: 20px; }
+
+  .fe-label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-60);
+    margin-bottom: 8px;
+  }
+
+  .fe-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--ink-12);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .fe-input:focus {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px var(--violet-10);
+  }
+
+  .fe-input::placeholder { color: var(--ink-30); }
+
+  /* ── Dropzone ── */
+  .fe-dropzone {
+    border: 2px dashed var(--ink-12);
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    background: var(--violet-04);
+  }
+
+  .fe-dropzone:hover, .fe-dropzone.dragover {
+    border-color: var(--violet);
+    background: var(--violet-10);
+  }
+
+  .fe-dropzone.has-file {
+    border-style: solid;
+    border-color: var(--success);
+    background: #f0fdf4;
+  }
+
+  .fe-dropzone-icon {
+    margin-bottom: 10px;
+    color: var(--ink-30);
+    transition: color 0.25s;
+  }
+
+  .fe-dropzone:hover .fe-dropzone-icon { color: var(--violet); }
+  .fe-dropzone.has-file .fe-dropzone-icon { color: var(--success); }
+
+  .fe-dropzone-text {
+    font-size: 14px;
+    color: var(--ink-60);
+    line-height: 1.5;
+  }
+
+  .fe-dropzone-text strong {
+    color: var(--violet);
+    font-weight: 600;
+  }
+
+  .fe-dropzone-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-30);
+    margin-top: 6px;
+  }
+
+  .fe-dropzone-filename {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--success);
+    margin-top: 8px;
+    display: none;
+  }
+
+  .fe-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* ── Privacy note ── */
+  .fe-privacy {
+    font-size: 12px;
+    color: var(--ink-30);
+    margin-bottom: 24px;
+    line-height: 1.4;
+  }
+
+  /* ── Button ── */
+  .fe-btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--violet);
+    color: white;
+  }
+
+  .fe-btn:hover { background: var(--violet-glow); }
+  .fe-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Progress ── */
+  .fe-progress {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .fe-progress.active { display: block; }
+
+  .fe-spinner {
+    width: 44px;
+    height: 44px;
+    border: 3px solid var(--ink-06);
+    border-top-color: var(--violet);
+    border-radius: 50%;
+    animation: fe-spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+
+  @keyframes fe-spin { to { transform: rotate(360deg); } }
+
+  .fe-progress-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .fe-progress-step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-30);
+  }
+
+  .fe-steps-log {
+    margin-top: 20px;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .fe-step-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 0;
+    color: var(--ink-30);
+    border-bottom: 1px solid var(--ink-06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fe-step-item.active { color: var(--violet); font-weight: 500; }
+  .fe-step-item.done { color: var(--success); }
+
+  .fe-step-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ink-12);
+    flex-shrink: 0;
+  }
+
+  .fe-step-item.active .fe-step-dot { background: var(--violet); }
+  .fe-step-item.done .fe-step-dot { background: var(--success); }
+
+  /* ── Report viewer ── */
+  .fe-report {
+    display: none;
+  }
+
+  .fe-report.active { display: block; }
+
+  .fe-report-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--ink-06);
+  }
+
+  .fe-report-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-30);
+  }
+
+  .fe-report-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .fe-link-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--violet);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 10px;
+    transition: background 0.15s;
+  }
+
+  .fe-link-btn:hover { background: var(--violet-10); }
+
+  .fe-report iframe {
+    width: 100%;
+    height: 700px;
+    border: 1px solid var(--ink-06);
+    background: white;
+  }
+
+  .fe-email-sent {
+    font-size: 13px;
+    color: var(--success);
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fe-cta {
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--violet-04);
+    border: 1px solid var(--violet-10);
+    text-align: center;
+  }
+
+  .fe-cta p {
+    font-size: 14px;
+    color: var(--ink-60);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .fe-cta a {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--violet);
+    text-decoration: none;
+  }
+
+  .fe-cta a:hover { text-decoration: underline; }
+
+  /* ── Error toast ── */
+  .fe-toast {
+    display: none;
+    background: var(--danger);
+    color: white;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    line-height: 1.4;
+  }
+
+  .fe-toast.show { display: block; animation: fe-fadeIn 0.3s ease; }
+
+  @keyframes fe-fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── File size warning ── */
+  .fe-size-warning {
+    display: none;
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 6px;
+  }
+</style>
+
+<!-- ── Form View ── -->
+<div class="fe-card" id="feFormView">
+  <h2 class="fe-title">Get your free cloud audit</h2>
+  <p class="fe-subtitle">Upload your AWS CUR or Azure cost export. We'll generate a professional audit with cost breakdown, tag analysis, and AI-powered recommendations.</p>
+
+  <form id="feForm">
+    <div class="fe-field">
+      <label class="fe-label" for="feEmail">Work Email</label>
+      <input class="fe-input" type="email" id="feEmail" placeholder="you@company.com" required>
+    </div>
+
+    <div class="fe-field">
+      <label class="fe-label" for="feCompany">Company Name</label>
+      <input class="fe-input" type="text" id="feCompany" placeholder="e.g. Acme Corp" required>
+    </div>
+
+    <div class="fe-field">
+      <label class="fe-label">Cost Export (CSV)</label>
+      <div class="fe-dropzone" id="feDropzone">
+        <div class="fe-dropzone-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 12 15 15"/>
+          </svg>
+        </div>
+        <div class="fe-dropzone-text">Drop your file here or <strong>browse</strong></div>
+        <div class="fe-dropzone-hint">AWS CUR (.csv) or Azure Cost Export (.csv)</div>
+        <div class="fe-dropzone-filename" id="feFileName"></div>
+        <div class="fe-size-warning" id="feSizeWarning">Large file detected. For best results, filter your CUR to the target period before uploading.</div>
+        <input type="file" id="feFile" accept=".csv">
+      </div>
+    </div>
+
+    <p class="fe-privacy">We'll email you a copy of the report. No spam, no follow-up unless you ask.</p>
+
+    <button type="submit" class="fe-btn" id="feSubmit" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Get your free audit
+    </button>
+  </form>
+
+  <div class="fe-toast" id="feToast"></div>
+</div>
+
+<!-- ── Progress View ── -->
+<div class="fe-card fe-progress" id="feProgressView">
+  <div class="fe-spinner"></div>
+  <div class="fe-progress-title">Generating your report</div>
+  <div class="fe-progress-step" id="feProgressStep">Uploading CSV...</div>
+  <div class="fe-steps-log" id="feStepsLog"></div>
+</div>
+
+<!-- ── Report View ── -->
+<div class="fe-card fe-report" id="feReportView">
+  <div class="fe-report-bar">
+    <span class="fe-report-label" id="feReportLabel"></span>
+    <div class="fe-report-actions">
+      <button class="fe-link-btn" id="feDownloadBtn">Download</button>
+      <button class="fe-link-btn" id="feNewAuditBtn">New audit</button>
+    </div>
+  </div>
+  <iframe id="feReportFrame" sandbox="allow-same-origin"></iframe>
+  <div class="fe-email-sent" id="feEmailSent" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    A copy has been sent to your email
+  </div>
+  <div class="fe-cta">
+    <p>Want expert help implementing these recommendations?</p>
+    <a href="https://finabeo.com" target="_blank" rel="noopener">Book a free consultation with Finabeo</a>
+  </div>
+</div>
+
+<script>
+(function() {
+  // ── Configuration ──
+  const CONFIG = {
+    API_URL: "https://YOUR-APP.railway.app",  // Replace with your Railway URL
+    SHEETS_WEBHOOK: "",  // Optional: Google Sheets webhook URL for lead tracking
+  };
+
+  // ── DOM refs ──
+  const formView = document.getElementById('feFormView');
+  const progressView = document.getElementById('feProgressView');
+  const reportView = document.getElementById('feReportView');
+  const form = document.getElementById('feForm');
+  const emailInput = document.getElementById('feEmail');
+  const companyInput = document.getElementById('feCompany');
+  const dropzone = document.getElementById('feDropzone');
+  const fileInput = document.getElementById('feFile');
+  const fileNameEl = document.getElementById('feFileName');
+  const sizeWarning = document.getElementById('feSizeWarning');
+  const submitBtn = document.getElementById('feSubmit');
+  const progressStep = document.getElementById('feProgressStep');
+  const stepsLog = document.getElementById('feStepsLog');
+  const reportFrame = document.getElementById('feReportFrame');
+  const reportLabel = document.getElementById('feReportLabel');
+  const emailSent = document.getElementById('feEmailSent');
+  const downloadBtn = document.getElementById('feDownloadBtn');
+  const newAuditBtn = document.getElementById('feNewAuditBtn');
+  const toast = document.getElementById('feToast');
+
+  let reportHTML = '';
+
+  // ── View switching ──
+  function showView(view) {
+    formView.style.display = 'none';
+    progressView.classList.remove('active');
+    reportView.classList.remove('active');
+    if (view === 'form') formView.style.display = 'block';
+    if (view === 'progress') progressView.classList.add('active');
+    if (view === 'report') reportView.classList.add('active');
+  }
+
+  // ── Dropzone ──
+  ['dragover', 'dragenter'].forEach(e => {
+    dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(e => {
+    dropzone.addEventListener(e, () => dropzone.classList.remove('dragover'));
+  });
+  dropzone.addEventListener('drop', ev => {
+    ev.preventDefault();
+    if (ev.dataTransfer.files.length) {
+      fileInput.files = ev.dataTransfer.files;
+      onFileSelected();
+    }
+  });
+  fileInput.addEventListener('change', onFileSelected);
+
+  function onFileSelected() {
+    if (!fileInput.files.length) return;
+    const f = fileInput.files[0];
+    const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+    fileNameEl.textContent = f.name + ' (' + sizeMB + ' MB)';
+    fileNameEl.style.display = 'block';
+    dropzone.classList.add('has-file');
+    submitBtn.disabled = false;
+    sizeWarning.style.display = parseFloat(sizeMB) > 50 ? 'block' : 'none';
+  }
+
+  // ── Progress simulation ──
+  const STEPS = [
+    'Uploading CSV...',
+    'Detecting cloud provider...',
+    'Parsing billing data...',
+    'Analysing costs...',
+    'Analysing tag coverage...',
+    'Generating charts...',
+    'Generating AI insights...',
+    'Rendering report...',
+  ];
+
+  function simulateProgress() {
+    stepsLog.innerHTML = '';
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < STEPS.length) {
+        progressStep.textContent = STEPS[i];
+        const item = document.createElement('div');
+        item.className = 'fe-step-item active';
+        item.innerHTML = '<span class="fe-step-dot"></span>' + STEPS[i];
+        const prev = stepsLog.querySelector('.fe-step-item.active');
+        if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+        stepsLog.appendChild(item);
+        stepsLog.scrollTop = stepsLog.scrollHeight;
+        i++;
+      } else {
+        clearInterval(interval);
+        progressStep.textContent = 'Finalising...';
+      }
+    }, 4000);
+    return interval;
+  }
+
+  // ── Error display ──
+  function showError(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 6000);
+  }
+
+  // ── Google Sheets webhook (fire-and-forget) ──
+  function trackLead(email, company) {
+    if (!CONFIG.SHEETS_WEBHOOK) return;
+    fetch(CONFIG.SHEETS_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email,
+        company: company,
+        timestamp: new Date().toISOString(),
+        source: 'cloud-audit-widget',
+      }),
+    }).catch(() => {});
+  }
+
+  // ── Form submit ──
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = fileInput.files[0];
+    const email = emailInput.value.trim();
+    const company = companyInput.value.trim();
+    if (!file || !email || !company) return;
+
+    showView('progress');
+    const progressInterval = simulateProgress();
+
+    // Track lead
+    trackLead(email, company);
+
+    const formData = new FormData();
+    formData.append('csv', file);
+    formData.append('client', company);
+    formData.append('email', email);
+    formData.append('use_ai', '1');
+
+    try {
+      const res = await fetch(CONFIG.API_URL + '/generate', {
+        method: 'POST',
+        body: formData,
+      });
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        let errMsg = 'Report generation failed';
+        try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
+        showView('form');
+        showError(errMsg);
+        return;
+      }
+
+      reportHTML = await res.text();
+      reportLabel.textContent = company + ' — Cloud Cost Audit';
+      reportFrame.srcdoc = reportHTML;
+      emailSent.style.display = email ? 'flex' : 'none';
+      showView('report');
+    } catch (err) {
+      clearInterval(progressInterval);
+      showView('form');
+      showError('Connection error. Please try again.');
+    }
+  });
+
+  // ── Download report ──
+  downloadBtn.addEventListener('click', () => {
+    if (!reportHTML) return;
+    const blob = new Blob([reportHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cloud_audit_' + companyInput.value.trim().replace(/\s+/g, '_').toLowerCase() + '.html';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── New audit ──
+  newAuditBtn.addEventListener('click', () => {
+    reportHTML = '';
+    reportFrame.srcdoc = '';
+    form.reset();
+    fileNameEl.style.display = 'none';
+    dropzone.classList.remove('has-file');
+    submitBtn.disabled = true;
+    sizeWarning.style.display = 'none';
+    showView('form');
+  });
+})();
+</script>
+
+</div>

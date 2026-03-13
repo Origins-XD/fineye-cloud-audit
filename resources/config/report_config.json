@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "branding": {
+    "company_name": "Finabeo",
+    "tagline": "Cloud FinOps & Agentic AI Consultancy",
+    "logo_path": "branding/finabeo_logo.png",
+    "primary_color": "#1a1a2e",
+    "accent_color": "#16213e",
+    "highlight_color": "#0f3460",
+    "text_color": "#333333"
+  },
+  "report_sections": {
+    "cover_page": true,
+    "executive_summary": true,
+    "cost_overview": true,
+    "service_breakdown": true,
+    "regional_breakdown": true,
+    "tag_analysis": true,
+    "anomaly_detection": true,
+    "recommendations": true,
+    "appendix": true
+  },
+  "thresholds": {
+    "anomaly_std_multiplier": 2.0,
+    "tag_coverage_warning": 80,
+    "tag_coverage_critical": 50,
+    "top_services_count": 10,
+    "top_resources_count": 15,
+    "top_untagged_count": 20
+  },
+  "chart_settings": {
+    "width": 800,
+    "height": 450,
+    "color_palette": [
+      "#0f3460", "#16213e", "#533483", "#e94560",
+      "#0f4c75", "#3282b8", "#bbe1fa", "#48c9b0",
+      "#f39c12", "#8e44ad"
+    ]
+  }
+}

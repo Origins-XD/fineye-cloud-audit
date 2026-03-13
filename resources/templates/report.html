@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Cost Audit Report — {{ report.client_name }}</title>
+    <style>
+        {% include "styles.css" %}
+    </style>
+</head>
+<body>
+
+<!-- ==================== HEADER (Purple Gradient Hero) ==================== -->
+<header class="header">
+    <div class="header-logo-wrapper">
+        <span class="header-company-name">FINABEO</span>
+    </div>
+    <div class="header-content">
+        <h1>Cloud Cost Audit Report</h1>
+        <div class="header-grid">
+            <div class="header-item">
+                <div class="header-label">Client</div>
+                <div class="header-value">{{ report.client_name }}</div>
+            </div>
+            <div class="header-item">
+                <div class="header-label">Analysis Period</div>
+                <div class="header-value">{{ report.reporting_period }}</div>
+            </div>
+            <div class="header-item">
+                <div class="header-label">Generated</div>
+                <div class="header-value">{{ report.report_date }}</div>
+            </div>
+            <div class="header-item">
+                <div class="header-label">Cloud Provider</div>
+                <div class="header-value">{{ report.cloud_provider | upper }}</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ==================== EXECUTIVE SUMMARY (Outcome Box) ==================== -->
+<div class="outcome-box-wrapper">
+    <div class="outcome-box">
+        <div class="outcome-label">Executive Summary</div>
+        <div class="outcome-text">{{ ai.executive_summary }}</div>
+
+        {% if ai.key_findings %}
+        <ul class="findings-list">
+            {% for finding in ai.key_findings %}
+            <li>{{ finding }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ==================== COST OVERVIEW ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Cost Overview</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">{{ cost.date_range_start }} to {{ cost.date_range_end }} — {{ cost.num_days }} days of cloud spending analysed.</p>
+
+        <div class="card-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Spend</div>
+                <div class="metric-value">{{ cost.total_cost | format_currency }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Daily Average</div>
+                <div class="metric-value">{{ cost.daily_average | format_currency }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Services</div>
+                <div class="metric-value">{{ cost.top_services | length }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Anomalies</div>
+                <div class="metric-value">{{ cost.anomalies | length }}</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <img src="file://{{ charts.cost_by_service_pie }}" alt="Cost by Service">
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">% of Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for svc in cost.top_services %}
+                <tr>
+                    <td>{{ svc.service }}</td>
+                    <td class="text-right">{{ svc.cost | format_currency }}</td>
+                    <td class="text-right">{{ svc.pct | format_pct }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== COST TREND ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Cost Trend</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">Daily spending pattern over the reporting period.</p>
+
+        <div class="chart-container">
+            <img src="file://{{ charts.cost_trend_line }}" alt="Daily Cost Trend">
+        </div>
+
+        {% if charts.month_over_month_bar %}
+        <div class="chart-container">
+            <img src="file://{{ charts.month_over_month_bar }}" alt="Month-over-Month Comparison">
+        </div>
+
+        {% if cost.month_over_month | length > 1 %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">Change</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in cost.month_over_month %}
+                <tr>
+                    <td>{{ m.month }}</td>
+                    <td class="text-right">{{ m.cost | format_currency }}</td>
+                    <td class="text-right">
+                        {% if m.change_pct is not none %}
+                            {% if m.change_pct > 0 %}
+                                <span class="anomaly-high">+{{ m.change_pct | format_pct }}</span>
+                            {% elif m.change_pct < 0 %}
+                                <span class="anomaly-low">{{ m.change_pct | format_pct }}</span>
+                            {% else %}
+                                {{ m.change_pct | format_pct }}
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% endif %}
+
+        {% if cost.anomalies %}
+        <div class="section-title-wrapper" style="margin-top: 40px;">
+            <h2 class="section-title" style="font-size: 1.1rem; letter-spacing: 2px;">Cost Anomalies Detected</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th class="text-right">Actual Cost</th>
+                    <th class="text-right">Expected</th>
+                    <th class="text-right">Deviation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in cost.anomalies %}
+                <tr>
+                    <td>{{ a.date }}</td>
+                    <td class="text-right">{{ a.cost | format_currency }}</td>
+                    <td class="text-right">{{ a.expected | format_currency }}</td>
+                    <td class="text-right">
+                        {% if a.deviation > 0 %}
+                            <span class="anomaly-high">+{{ a.deviation }}x</span>
+                        {% else %}
+                            <span class="anomaly-low">{{ a.deviation }}x</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <!-- ==================== REGIONAL BREAKDOWN ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Regional Breakdown</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">Cost distribution across cloud regions.</p>
+
+        <div class="chart-container">
+            <img src="file://{{ charts.cost_by_region_bar }}" alt="Cost by Region">
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Region</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">% of Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in cost.cost_by_region %}
+                <tr>
+                    <td>{{ r.region }}</td>
+                    <td class="text-right">{{ r.cost | format_currency }}</td>
+                    <td class="text-right">{{ r.pct | format_pct }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== TAG ANALYSIS ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Tag Coverage Analysis</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">Resource tagging compliance and cost allocation readiness.</p>
+
+        <div class="card-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Resources</div>
+                <div class="metric-value">{{ tags.total_resources | format_number }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Tag Coverage</div>
+                <div class="metric-value">
+                    {% if tags.coverage_pct >= 80 %}
+                        <span class="tag-status-good">{{ tags.coverage_pct | format_pct }}</span>
+                    {% elif tags.coverage_pct >= 50 %}
+                        <span class="tag-status-warning">{{ tags.coverage_pct | format_pct }}</span>
+                    {% else %}
+                        <span class="tag-status-critical">{{ tags.coverage_pct | format_pct }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Untagged Resources</div>
+                <div class="metric-value">{{ tags.untagged_resources | format_number }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Untagged Spend</div>
+                <div class="metric-value">{{ tags.cost_of_untagged | format_currency }}</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <img src="file://{{ charts.tag_coverage_donut }}" alt="Tag Coverage">
+        </div>
+
+        {% if tags.tag_key_distribution %}
+        <div class="section-title-wrapper" style="margin-top: 40px;">
+            <h2 class="section-title" style="font-size: 1.1rem; letter-spacing: 2px;">Tag Key Distribution</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tag Key</th>
+                    <th class="text-right">Resources</th>
+                    <th class="text-right">Coverage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tags.tag_key_distribution %}
+                <tr>
+                    <td>{{ t.key }}</td>
+                    <td class="text-right">{{ t.count | format_number }}</td>
+                    <td class="text-right">{{ t.pct | format_pct }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if tags.top_untagged_resources %}
+        <div class="section-title-wrapper" style="margin-top: 40px;">
+            <h2 class="section-title" style="font-size: 1.1rem; letter-spacing: 2px;">Top Untagged Resources by Cost</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Resource ID</th>
+                    <th>Service</th>
+                    <th class="text-right">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in tags.top_untagged_resources[:10] %}
+                <tr>
+                    <td><span class="resource-id">{{ r.resource_id }}</span></td>
+                    <td>{{ r.service }}</td>
+                    <td class="text-right">{{ r.cost | format_currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <!-- ==================== TOP RESOURCES ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Top Resources by Spend</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">Individual resources with the highest cost during the reporting period.</p>
+
+        <div class="chart-container">
+            <img src="file://{{ charts.top_resources_bar }}" alt="Top Resources by Cost">
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Resource ID</th>
+                    <th>Service</th>
+                    <th>Type</th>
+                    <th class="text-right">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in cost.top_resources[:15] %}
+                <tr>
+                    <td><span class="resource-id">{{ r.resource_id[:50] }}</span></td>
+                    <td>{{ r.service }}</td>
+                    <td>{{ r.resource_type }}</td>
+                    <td class="text-right">{{ r.cost | format_currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ==================== RECOMMENDATIONS ==================== -->
+    <div class="section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Recommendations</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <p class="section-intro">Actionable steps to optimise your cloud spend.</p>
+
+        <div class="recommendations-grid">
+            {% for rec in ai.recommendations %}
+            <div class="recommendation-card">
+                <div class="recommendation-number">{{ loop.index }}</div>
+                <div class="recommendation-content">
+                    <h3>{{ rec.title }}</h3>
+                    <p>{{ rec.description }}</p>
+                    {% if rec.estimated_impact %}
+                    <span class="impact-badge">Est. Impact: {{ rec.estimated_impact }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ==================== APPENDIX ==================== -->
+    <div class="appendix">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">Appendix</h2>
+            <div class="section-title-line"></div>
+        </div>
+
+        <h3>Methodology</h3>
+        <p>{{ ai.methodology_note }}</p>
+
+        <h3>Data Sources</h3>
+        <p>
+            This report was generated from
+            {% if report.cloud_provider == 'aws' %}
+                AWS Cost and Usage Report (CUR) data
+            {% elif report.cloud_provider == 'azure' %}
+                Azure Cost Management export data
+            {% else %}
+                cloud billing export data
+            {% endif %}
+            covering the period {{ cost.date_range_start }} to {{ cost.date_range_end }}.
+        </p>
+
+        <h3>Definitions</h3>
+        <p>
+            <strong>Cost Anomaly:</strong> A day where spending deviates significantly
+            (more than 2 standard deviations) from the average daily spend.<br>
+            <strong>Tag Coverage:</strong> The percentage of unique resources that have at least
+            one user-defined tag applied.<br>
+            <strong>Untagged Spend:</strong> Total cost attributable to resources with no tags,
+            which cannot be allocated to specific teams or projects.
+        </p>
+
+        {% if report.notes %}
+        <h3>Notes</h3>
+        <p>{{ report.notes }}</p>
+        {% endif %}
+
+        <div class="report-footer">
+            <p>
+                This report is generated using automated analysis tools and AI-assisted insights.
+                While every effort is made to ensure accuracy, findings should be validated against
+                your cloud provider's native cost management tools. For questions or a deeper
+                analysis, contact Finabeo at <strong>hello@finabeo.com</strong>.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

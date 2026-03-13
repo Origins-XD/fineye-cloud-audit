@@ -1,0 +1,448 @@
+/* Cloud Cost Audit Report — FinEye Design System */
+/* Tokens from skills/fineye-html-design/references/tokens.md */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+    --color-primary:           #4F1AD6;
+    --color-primary-light:     #6B39E0;
+    --color-primary-accent:    #6733FF;
+    --color-primary-bg:        rgba(79, 26, 214, 0.04);
+    --color-primary-border:    rgba(79, 26, 214, 0.15);
+    --gradient-header:         linear-gradient(135deg, #4F1AD6 0%, #6B39E0 100%);
+    --gradient-bar:            linear-gradient(90deg, #4F1AD6, #6B39E0);
+    --color-text-dark:         #333333;
+    --color-text-medium:       #555555;
+    --color-text-light:        #666666;
+    --color-text-muted:        #888888;
+    --color-text-faint:        #999999;
+    --color-bg-white:          #FFFFFF;
+    --color-bg-gray:           #F7F7F7;
+    --color-border:            #EEEFF1;
+    --color-border-light:      #F0F0F0;
+    --color-divider:           #E8E8E8;
+    --status-critical:         #E74C3C;
+    --status-critical-bg:      #FFEBEE;
+    --status-warning:          #E67E22;
+    --status-warning-bg:       #FFF3E0;
+    --status-good:             #27AE60;
+    --status-good-bg:          #E8F5E9;
+    --font-display:            'Montserrat', sans-serif;
+    --font-body:               'Inter', sans-serif;
+    --border-standard:         1px solid #EEEFF1;
+    --border-radius:           0px;
+    --shadow-card:             0 2px 10px rgba(0,0,0,0.05);
+    --shadow-outcome:          0 4px 20px rgba(0,0,0,0.08);
+    --content-max-width:       900px;
+    --content-padding:         48px;
+}
+
+/* ============= Page Setup ============= */
+@page {
+    size: A4;
+    margin: 1.5cm 0 2cm 0;
+}
+
+/* ============= Base ============= */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--color-text-dark);
+    background: white;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+}
+
+/* ============= Report Header (Purple Gradient Hero) ============= */
+.header {
+    background: var(--gradient-header);
+    color: white;
+    padding: 50px 0 70px;
+    position: relative;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.header-logo-wrapper {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    text-align: right;
+    padding: 0 var(--content-padding);
+    margin-bottom: 10px;
+}
+
+.header-company-name {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.header-content {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 var(--content-padding);
+}
+
+.header h1 {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 30px;
+    color: white;
+}
+
+.header-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.header-item {
+    border-left: 3px solid rgba(255, 255, 255, 0.5);
+    padding-left: 15px;
+}
+
+.header-label {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    margin-bottom: 5px;
+}
+
+.header-value {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+/* ============= Outcome Box (Exec Summary) ============= */
+.outcome-box-wrapper {
+    max-width: var(--content-max-width);
+    margin: -30px auto 0;
+    padding: 0 var(--content-padding);
+    position: relative;
+    z-index: 10;
+}
+
+.outcome-box {
+    background: white;
+    border: var(--border-standard);
+    border-radius: var(--border-radius);
+    padding: 28px 32px;
+    box-shadow: var(--shadow-outcome);
+}
+
+.outcome-label {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--color-primary);
+    margin-bottom: 15px;
+}
+
+.outcome-text {
+    font-family: var(--font-body);
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--color-text-dark);
+    line-height: 1.8;
+}
+
+.findings-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 25px;
+}
+
+.findings-list li {
+    padding: 10px 12px 10px 28px;
+    position: relative;
+    border-bottom: 1px solid var(--color-border-light);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: var(--color-text-medium);
+}
+
+.findings-list li:last-child { border-bottom: none; }
+
+.findings-list li::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 16px;
+    width: 6px;
+    height: 6px;
+    background: var(--color-primary);
+}
+
+/* ============= Container ============= */
+.container {
+    padding: 30px 0;
+}
+
+/* ============= Section Headers ============= */
+.section { margin-bottom: 36px; }
+
+.section-title-wrapper { margin-bottom: 12px; }
+
+.section-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-dark);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin: 0 0 6px 0;
+}
+
+.section-title-line {
+    height: 3px;
+    width: 60px;
+    background: var(--color-primary);
+}
+
+.section-intro {
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 300;
+    color: var(--color-text-medium);
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+/* ============= Metric Cards ============= */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: white;
+    border: var(--border-standard);
+    border-radius: var(--border-radius);
+    padding: 20px 16px;
+    text-align: center;
+}
+
+.metric-card .metric-label {
+    font-family: var(--font-display);
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-light);
+    margin-bottom: 8px;
+}
+
+.metric-card .metric-value {
+    font-family: var(--font-body);
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: var(--color-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.metric-card .metric-context {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 300;
+    color: var(--color-text-muted);
+}
+
+/* ============= Tables ============= */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    border: var(--border-standard);
+}
+
+.data-table thead th {
+    font-family: var(--font-display);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-primary);
+    background: var(--color-bg-gray);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.data-table thead th:last-child,
+.data-table thead th.text-right { text-align: right; }
+
+.data-table tbody td {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 300;
+    color: var(--color-text-dark);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+}
+
+.data-table tbody td:last-child,
+.data-table tbody td.text-right { text-align: right; }
+
+.data-table tbody tr:hover { background: var(--color-primary-bg); }
+
+.resource-id {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--color-text-medium);
+    word-break: break-all;
+}
+
+/* ============= Charts ============= */
+.chart-container {
+    text-align: center;
+    margin: 16px 0 24px 0;
+    page-break-inside: avoid;
+}
+
+.chart-container img {
+    max-width: 100%;
+    height: auto;
+    max-height: 340px;
+    object-fit: contain;
+}
+
+/* ============= Recommendation Cards ============= */
+.recommendations-grid { margin-bottom: 20px; }
+
+.recommendation-card {
+    display: flex;
+    gap: 16px;
+    padding: 18px 20px;
+    background: white;
+    border: var(--border-standard);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--border-radius);
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+}
+
+.recommendation-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.recommendation-content h3 {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--color-text-dark);
+    margin-bottom: 6px;
+}
+
+.recommendation-content p {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--color-text-medium);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.impact-badge {
+    display: inline-block;
+    background: var(--status-good-bg);
+    color: var(--status-good);
+    border: 1px solid rgba(39, 174, 96, 0.3);
+    padding: 5px 12px;
+    border-radius: var(--border-radius);
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============= Status ============= */
+.anomaly-high { color: var(--status-critical); font-weight: 600; }
+.anomaly-low { color: var(--status-good); font-weight: 600; }
+.tag-status-good { color: var(--status-good); font-weight: 600; }
+.tag-status-warning { color: var(--status-warning); font-weight: 600; }
+.tag-status-critical { color: var(--status-critical); font-weight: 600; }
+
+/* ============= Appendix ============= */
+.appendix { padding-top: 30px; border-top: 1px solid var(--color-divider); margin-top: 20px; }
+
+.appendix p {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--color-text-light);
+    line-height: 1.8;
+}
+
+.appendix h3 {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--color-text-dark);
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+
+/* ============= Footer ============= */
+.report-footer {
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-divider);
+}
+
+.report-footer p {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--color-text-faint);
+    line-height: 1.6;
+}
+
+/* ============= Utility ============= */
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+/* Use page-break-inside: avoid on sections instead of forced page-break-before */
+.page-break { page-break-inside: avoid; }
+
+/* ============= Print / PDF ============= */
+@media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { max-width: 100%; padding: 0; }
+    .header { width: 100%; margin-left: 0; }
+}
