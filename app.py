@@ -34,7 +34,7 @@ from ai.insight_generator import generate_insights, _fallback_insights
 from report.pdf_generator import _render_html, _embed_images_as_base64
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB for large CURs
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB (client gzips before upload)
 
 # ── CORS for Framer embed ──
 ALLOWED_ORIGINS = os.environ.get(
@@ -310,8 +310,10 @@ def generate():
     period = request.form.get("period", "") or None
     use_ai = request.form.get("use_ai", "1") == "1"
 
-    # Save uploaded file to temp
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+    # Save uploaded file to temp (detect gzip so pandas auto-decompresses)
+    filename = csv_file.filename or "upload.csv"
+    suffix = ".csv.gz" if filename.endswith(".gz") else ".csv"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         csv_file.save(tmp)
         tmp_path = Path(tmp.name)
 

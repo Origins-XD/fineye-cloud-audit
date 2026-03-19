@@ -567,6 +567,88 @@
     }).catch(() => {});
   }
 
+  // ── Client-side CSV optimisation ──
+  // Prunes unused columns + gzip compresses before upload.
+  // Reduces a 559MB CUR to ~55MB, avoiding 413 errors.
+
+  const CUR1_KEEP = ['lineItem/', 'bill/', 'product/'];
+  const CUR2_KEEP = ['line_item_', 'bill_', 'product_', 'resource_tags'];
+  const AZURE_KEEP = [
+    'date','usagedatetime','metercategory','metersubcategory','resourceid',
+    'instanceid','resourcelocation','costinbillingcurrency','pretaxcost',
+    'quantity','usagequantity','currency','billingcurrency','billingcurrencycode',
+    'subscriptionid','subscriptionguid','subscriptionname','chargetype','tags','tag',
+  ];
+
+  function pruneCSV(text) {
+    const nl = text.indexOf('\n');
+    if (nl === -1) return text;
+    const headerLine = text.substring(0, nl).replace(/\r$/, '');
+    const cols = headerLine.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+
+    // Detect format and pick columns to keep
+    const isCUR1 = cols.some(c => c.includes('/') && /lineItem|product\/|bill\//.test(c));
+    const isCUR2 = !isCUR1 && cols.some(c => c.startsWith('line_item_') || c.startsWith('bill_'));
+
+    let keepIdx = [];
+    if (isCUR1) {
+      let tagCount = 0;
+      for (let i = 0; i < cols.length; i++) {
+        if (cols[i].startsWith('resourceTags/')) {
+          if (tagCount < 50) { keepIdx.push(i); tagCount++; }
+        } else if (CUR1_KEEP.some(p => cols[i].startsWith(p))) {
+          keepIdx.push(i);
+        }
+      }
+    } else if (isCUR2) {
+      for (let i = 0; i < cols.length; i++) {
+        if (CUR2_KEEP.some(p => cols[i].startsWith(p))) keepIdx.push(i);
+      }
+    } else {
+      for (let i = 0; i < cols.length; i++) {
+        if (AZURE_KEEP.includes(cols[i].toLowerCase())) keepIdx.push(i);
+      }
+    }
+
+    if (!keepIdx.length) return text; // detection failed, send as-is
+
+    const lines = text.split('\n');
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i]) continue;
+      const fields = lines[i].split(',');
+      out.push(keepIdx.map(j => fields[j] || '').join(','));
+    }
+    return out.join('\n');
+  }
+
+  async function compressBlob(blob) {
+    if (typeof CompressionStream === 'undefined') return null;
+    const stream = blob.stream().pipeThrough(new CompressionStream('gzip'));
+    return new Response(stream).blob();
+  }
+
+  async function prepareFile(file) {
+    // Step 1: prune unused columns
+    let text;
+    try { text = await file.text(); } catch { return { file, name: file.name }; }
+    let pruned;
+    try { pruned = pruneCSV(text); } catch { pruned = text; }
+
+    // Step 2: gzip compress
+    const blob = new Blob([pruned], { type: 'text/csv' });
+    try {
+      const gz = await compressBlob(blob);
+      if (gz) return { file: gz, name: file.name.replace(/\.csv$/i, '') + '.csv.gz' };
+    } catch { /* fall through */ }
+
+    // Fallback: pruned but uncompressed
+    if (pruned.length < text.length) {
+      return { file: new Blob([pruned], { type: 'text/csv' }), name: file.name };
+    }
+    return { file, name: file.name };
+  }
+
   // ── Form submit ──
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -581,8 +663,11 @@
     // Track lead
     trackLead(email, company);
 
+    // Optimise CSV before upload (prune + gzip)
+    const prepared = await prepareFile(file);
+
     const formData = new FormData();
-    formData.append('csv', file);
+    formData.append('csv', prepared.file, prepared.name);
     formData.append('client', company);
     formData.append('email', email);
     formData.append('use_ai', '1');
