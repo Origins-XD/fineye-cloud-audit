@@ -113,6 +113,8 @@ class AWSCURParser(BaseParser):
         return self._validate_output(df)
 
     def _get_needed_columns_v1(self, all_columns: list[str]) -> list[str]:
+        _MAX_TAG_COLUMNS = 50
+
         needed = set()
         for aws_col in CUR1_COLUMN_MAP:
             if aws_col in all_columns:
@@ -121,9 +123,18 @@ class AWSCURParser(BaseParser):
             for fb in fallbacks:
                 if fb in all_columns:
                     needed.add(fb)
-        for col in all_columns:
-            if col.startswith("resourceTags/"):
-                needed.add(col)
+
+        tag_cols = [col for col in all_columns if col.startswith("resourceTags/")]
+        if len(tag_cols) > _MAX_TAG_COLUMNS:
+            # Prioritise user-defined tags over aws: system tags
+            user_tags = [c for c in tag_cols if "user:" in c]
+            system_tags = [c for c in tag_cols if "user:" not in c]
+            tag_cols = user_tags[:_MAX_TAG_COLUMNS]
+            remaining = _MAX_TAG_COLUMNS - len(tag_cols)
+            if remaining > 0:
+                tag_cols.extend(system_tags[:remaining])
+
+        needed.update(tag_cols)
         return list(needed)
 
     def _extract_tags_v1(self, df: pd.DataFrame) -> pd.Series:
@@ -131,16 +142,26 @@ class AWSCURParser(BaseParser):
         if not tag_columns:
             return pd.Series(["{}" for _ in range(len(df))], index=df.index)
 
-        def row_to_tags(row: pd.Series) -> str:
-            tags = {}
-            for col in tag_columns:
-                val = row.get(col)
-                if pd.notna(val) and str(val).strip():
-                    key = col.split(":")[-1] if ":" in col else col.replace("resourceTags/", "")
-                    tags[key] = str(val).strip()
-            return json.dumps(tags)
+        # Build clean key names and vectorised string series per tag column
+        tag_data = {}
+        for col in tag_columns:
+            key = col.split(":")[-1] if ":" in col else col.replace("resourceTags/", "")
+            series = df[col].astype(str).str.strip()
+            series = series.replace({"": None, "nan": None, "None": None})
+            tag_data[key] = series
 
-        return df.apply(row_to_tags, axis=1)
+        tag_df = pd.DataFrame(tag_data, index=df.index)
+        has_any = tag_df.notna().any(axis=1)
+
+        result = pd.Series("{}", index=df.index)
+
+        if has_any.any():
+            result.loc[has_any] = tag_df.loc[has_any].apply(
+                lambda row: json.dumps({k: v for k, v in row.items() if v is not None}),
+                axis=1,
+            )
+
+        return result
 
     # ── CUR 2.0 parsing ──────────────────────────────────────────────
 

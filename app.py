@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import threading
 import traceback
 from datetime import datetime
@@ -103,50 +104,85 @@ def run_pipeline(csv_path: Path, client_name: str, period: str | None, use_ai: b
     config = load_config()
     thresholds = config.get("thresholds", {})
 
-    # Parse
-    df, provider = parse_file(csv_path)
+    # Stage 1: Parse
+    try:
+        t0 = time.time()
+        df, provider = parse_file(csv_path)
+        print(f"[pipeline] Parse: {time.time() - t0:.1f}s, {len(df):,} rows")
+    except Exception as e:
+        raise RuntimeError(f"CSV parsing failed: {e}") from e
 
-    # Analyze
-    cost_summary = analyze_costs(
-        df,
-        top_n_services=thresholds.get("top_services_count", 10),
-        top_n_resources=thresholds.get("top_resources_count", 15),
-        anomaly_threshold=thresholds.get("anomaly_std_multiplier", 2.0),
-    )
-    tag_summary = analyze_tags(
-        df,
-        top_untagged_count=thresholds.get("top_untagged_count", 20),
-    )
-
-    # Charts
-    with tempfile.TemporaryDirectory() as chart_dir:
-        chart_paths = generate_all_charts(cost_summary, tag_summary, Path(chart_dir), config)
-
-        # AI insights
-        if use_ai:
-            ai_insights = generate_insights(cost_summary, tag_summary, provider, client_name)
-        else:
-            ai_insights = _fallback_insights(cost_summary, tag_summary)
-
-        # Build report data
-        if not period:
-            period = f"{cost_summary.date_range_start} to {cost_summary.date_range_end}"
-
-        report_data = ReportData(
-            client_name=client_name,
-            report_date=datetime.now().strftime("%d %B %Y"),
-            reporting_period=period,
-            cloud_provider=provider,
-            cost_summary=cost_summary,
-            tag_summary=tag_summary,
-            chart_paths=chart_paths,
-            ai_insights=ai_insights,
+    # Stage 2: Cost analysis
+    try:
+        t0 = time.time()
+        cost_summary = analyze_costs(
+            df,
+            top_n_services=thresholds.get("top_services_count", 10),
+            top_n_resources=thresholds.get("top_resources_count", 15),
+            anomaly_threshold=thresholds.get("anomaly_std_multiplier", 2.0),
         )
+        print(f"[pipeline] Cost analysis: {time.time() - t0:.1f}s")
+    except Exception as e:
+        raise RuntimeError(f"Cost analysis failed ({len(df):,} rows): {e}") from e
 
-        # Render HTML with embedded base64 images
-        template_dir = SKILL_ROOT / "resources" / "templates"
-        html = _render_html(report_data, template_dir)
-        return _embed_images_as_base64(html)
+    # Stage 3: Tag analysis
+    try:
+        t0 = time.time()
+        tag_summary = analyze_tags(
+            df,
+            top_untagged_count=thresholds.get("top_untagged_count", 20),
+        )
+        print(f"[pipeline] Tag analysis: {time.time() - t0:.1f}s")
+    except Exception as e:
+        raise RuntimeError(f"Tag analysis failed ({len(df):,} rows): {e}") from e
+
+    # Free the large DataFrame after analysis
+    del df
+
+    # Stage 4: Charts + render
+    try:
+        with tempfile.TemporaryDirectory() as chart_dir:
+            t0 = time.time()
+            chart_paths = generate_all_charts(cost_summary, tag_summary, Path(chart_dir), config)
+            print(f"[pipeline] Charts: {time.time() - t0:.1f}s")
+
+            # Stage 5: AI insights (non-fatal — falls back to template)
+            t0 = time.time()
+            if use_ai:
+                try:
+                    ai_insights = generate_insights(cost_summary, tag_summary, provider, client_name)
+                except Exception as e:
+                    print(f"[pipeline] AI insights failed, using fallback: {e}")
+                    ai_insights = _fallback_insights(cost_summary, tag_summary)
+            else:
+                ai_insights = _fallback_insights(cost_summary, tag_summary)
+            print(f"[pipeline] AI insights: {time.time() - t0:.1f}s")
+
+            # Stage 6: Render
+            if not period:
+                period = f"{cost_summary.date_range_start} to {cost_summary.date_range_end}"
+
+            report_data = ReportData(
+                client_name=client_name,
+                report_date=datetime.now().strftime("%d %B %Y"),
+                reporting_period=period,
+                cloud_provider=provider,
+                cost_summary=cost_summary,
+                tag_summary=tag_summary,
+                chart_paths=chart_paths,
+                ai_insights=ai_insights,
+            )
+
+            t0 = time.time()
+            template_dir = SKILL_ROOT / "resources" / "templates"
+            html = _render_html(report_data, template_dir)
+            result = _embed_images_as_base64(html)
+            print(f"[pipeline] Render: {time.time() - t0:.1f}s")
+            return result
+    except RuntimeError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Report rendering failed: {e}") from e
 
 
 def run_demo_pipeline(client_name: str, use_ai: bool) -> str:
@@ -293,9 +329,12 @@ def generate():
         return html, 200, {"Content-Type": "text/html"}
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": f"Report generation failed: {str(e)}"}), 500
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
     finally:
         tmp_path.unlink(missing_ok=True)
 

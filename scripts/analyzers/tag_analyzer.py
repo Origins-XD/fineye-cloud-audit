@@ -32,8 +32,8 @@ def analyze_tags(df: pd.DataFrame, top_untagged_count: int = 20) -> TagSummary:
             top_untagged_resources=[],
         )
 
-    # Determine which resources have tags
-    resource_df["has_tags"] = resource_df["tags"].apply(_has_tags)
+    # Determine which resources have tags (vectorised string check)
+    resource_df["has_tags"] = _has_tags_vectorized(resource_df["tags"])
 
     tagged = resource_df["has_tags"].sum()
     untagged = total_resources - tagged
@@ -71,19 +71,18 @@ def analyze_tags(df: pd.DataFrame, top_untagged_count: int = 20) -> TagSummary:
     )
 
 
-def _has_tags(tags_str: str) -> bool:
-    """Check if a tags JSON string contains any actual tags."""
-    try:
-        tags = json.loads(tags_str)
-        return isinstance(tags, dict) and len(tags) > 0
-    except (json.JSONDecodeError, TypeError):
-        return False
+def _has_tags_vectorized(tags_series: pd.Series) -> pd.Series:
+    """Vectorised check: does the tags JSON string contain any actual tags?"""
+    stripped = tags_series.astype(str).str.strip()
+    return (stripped != "{}") & (stripped != "") & (stripped.str.len() > 2)
 
 
 def _count_tag_keys(df: pd.DataFrame) -> Counter:
     """Count how many resources have each tag key."""
     counter: Counter = Counter()
-    for tags_str in df["tags"]:
+    # Only parse rows that actually have tags
+    has_tags = _has_tags_vectorized(df["tags"])
+    for tags_str in df.loc[has_tags, "tags"]:
         try:
             tags = json.loads(tags_str)
             if isinstance(tags, dict):
