@@ -6,8 +6,10 @@ Run: python app.py (serves on http://localhost:3001)
 """
 from __future__ import annotations
 
+import gzip
 import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -310,11 +312,18 @@ def generate():
     period = request.form.get("period", "") or None
     use_ai = request.form.get("use_ai", "1") == "1"
 
-    # Save uploaded file to temp (detect gzip so pandas auto-decompresses)
+    # Save uploaded file to temp, decompress gzip if needed
     filename = csv_file.filename or "upload.csv"
-    suffix = ".csv.gz" if filename.endswith(".gz") else ".csv"
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        csv_file.save(tmp)
+    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+        if filename.endswith(".gz"):
+            # Decompress gzip to plain CSV before pipeline
+            with tempfile.NamedTemporaryFile(suffix=".csv.gz", delete=True) as gz_tmp:
+                csv_file.save(gz_tmp)
+                gz_tmp.flush()
+                with gzip.open(gz_tmp.name, "rb") as gz_in:
+                    shutil.copyfileobj(gz_in, tmp)
+        else:
+            csv_file.save(tmp)
         tmp_path = Path(tmp.name)
 
     try:
