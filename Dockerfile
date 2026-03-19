@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 3001
-CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-3001} --timeout 120 --workers 2 app:app"
+CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-3001} --timeout 300 --workers 1 app:app"

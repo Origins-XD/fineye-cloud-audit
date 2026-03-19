@@ -52,30 +52,39 @@ AZURE_PAYG_MAP = {
 class AzureCostParser(BaseParser):
     """Parser for Azure Cost Management export CSV files."""
 
+    _CHUNK_SIZE = 50_000
+
     def parse(self, file_path: Path) -> pd.DataFrame:
-        df = pd.read_csv(file_path, low_memory=False, encoding="utf-8-sig")
+        # Read headers to build column map once
+        all_columns = pd.read_csv(file_path, nrows=0, encoding="utf-8-sig").columns.tolist()
+        column_map = self._detect_and_map(all_columns)
 
-        # Detect which format we're dealing with and map columns
-        column_map = self._detect_and_map(df.columns.tolist())
-        df = df.rename(columns=column_map)
+        chunks = []
+        for chunk in pd.read_csv(
+            file_path,
+            low_memory=False,
+            encoding="utf-8-sig",
+            chunksize=self._CHUNK_SIZE,
+        ):
+            chunk = chunk.rename(columns=column_map)
 
-        # Parse and normalize the Tags column
-        tags_col = self._find_tags_column(df)
-        if tags_col:
-            df["tags"] = df[tags_col].apply(self._clean_tags)
-            if tags_col != "tags":
-                df = df.drop(columns=[tags_col], errors="ignore")
-        else:
-            df["tags"] = "{}"
+            tags_col = self._find_tags_column(chunk)
+            if tags_col:
+                chunk["tags"] = chunk[tags_col].apply(self._clean_tags)
+                if tags_col != "tags":
+                    chunk = chunk.drop(columns=[tags_col], errors="ignore")
+            else:
+                chunk["tags"] = "{}"
 
-        # Add static columns
-        df["provider"] = "azure"
-        if "charge_type" not in df.columns:
-            df["charge_type"] = "Usage"
-        if "account_name" not in df.columns:
-            df["account_name"] = df.get("account_id", "")
+            chunk["provider"] = "azure"
+            if "charge_type" not in chunk.columns:
+                chunk["charge_type"] = "Usage"
+            if "account_name" not in chunk.columns:
+                chunk["account_name"] = chunk.get("account_id", "")
 
-        return self._validate_output(df)
+            chunks.append(self._validate_output(chunk))
+
+        return pd.concat(chunks, ignore_index=True)
 
     def _detect_and_map(self, columns: list[str]) -> dict[str, str]:
         """Build the best column mapping for the actual CSV columns present."""

@@ -77,40 +77,43 @@ class AWSCURParser(BaseParser):
 
     # ── CUR 1.0 parsing ──────────────────────────────────────────────
 
+    _CHUNK_SIZE = 50_000
+
     def _parse_cur1(self, file_path: Path, all_columns: list[str]) -> pd.DataFrame:
         needed_columns = self._get_needed_columns_v1(all_columns)
 
-        df = pd.read_csv(
+        # Build rename map from first chunk's columns
+        rename_map = {}
+        for aws_col, norm_col in CUR1_COLUMN_MAP.items():
+            if aws_col in needed_columns:
+                rename_map[aws_col] = norm_col
+        for norm_col, fallbacks in CUR1_FALLBACK_MAP.items():
+            if norm_col not in rename_map.values():
+                for fallback in fallbacks:
+                    if fallback in needed_columns:
+                        rename_map[fallback] = norm_col
+                        break
+
+        # Read in chunks to avoid OOM on large files
+        chunks = []
+        for chunk in pd.read_csv(
             file_path,
             usecols=needed_columns,
             low_memory=False,
             encoding="utf-8-sig",
-        )
+            chunksize=self._CHUNK_SIZE,
+        ):
+            chunk = chunk.rename(columns=rename_map)
+            chunk["tags"] = self._extract_tags_v1(chunk)
+            tag_cols = [c for c in chunk.columns if c.startswith("resourceTags/")]
+            chunk = chunk.drop(columns=tag_cols, errors="ignore")
+            chunk["provider"] = "aws"
+            if "account_name" not in chunk.columns:
+                chunk["account_name"] = chunk.get("account_id", "")
+            # Validate immediately to shrink to 13 normalized columns
+            chunks.append(self._validate_output(chunk))
 
-        rename_map = {}
-        for aws_col, norm_col in CUR1_COLUMN_MAP.items():
-            if aws_col in df.columns:
-                rename_map[aws_col] = norm_col
-
-        for norm_col, fallbacks in CUR1_FALLBACK_MAP.items():
-            if norm_col not in rename_map.values():
-                for fallback in fallbacks:
-                    if fallback in df.columns:
-                        rename_map[fallback] = norm_col
-                        break
-
-        df = df.rename(columns=rename_map)
-
-        # Extract resource tags from resourceTags/user:* columns
-        df["tags"] = self._extract_tags_v1(df)
-        tag_cols = [c for c in df.columns if c.startswith("resourceTags/")]
-        df = df.drop(columns=tag_cols, errors="ignore")
-
-        df["provider"] = "aws"
-        if "account_name" not in df.columns:
-            df["account_name"] = df.get("account_id", "")
-
-        return self._validate_output(df)
+        return pd.concat(chunks, ignore_index=True)
 
     def _get_needed_columns_v1(self, all_columns: list[str]) -> list[str]:
         _MAX_TAG_COLUMNS = 50
@@ -168,39 +171,38 @@ class AWSCURParser(BaseParser):
     def _parse_cur2(self, file_path: Path, all_columns: list[str]) -> pd.DataFrame:
         needed_columns = self._get_needed_columns_v2(all_columns)
 
-        df = pd.read_csv(
+        rename_map = {}
+        for cur_col, norm_col in CUR2_COLUMN_MAP.items():
+            if cur_col in needed_columns:
+                rename_map[cur_col] = norm_col
+        for norm_col, fallbacks in CUR2_FALLBACK_MAP.items():
+            if norm_col not in rename_map.values():
+                for fallback in fallbacks:
+                    if fallback in needed_columns:
+                        rename_map[fallback] = norm_col
+                        break
+
+        # Read in chunks to avoid OOM on large files
+        chunks = []
+        for chunk in pd.read_csv(
             file_path,
             usecols=needed_columns,
             low_memory=False,
             encoding="utf-8-sig",
-        )
+            chunksize=self._CHUNK_SIZE,
+        ):
+            chunk = chunk.rename(columns=rename_map)
+            if "resource_tags" in chunk.columns:
+                chunk["tags"] = chunk["resource_tags"].apply(self._normalize_tags)
+                chunk = chunk.drop(columns=["resource_tags"], errors="ignore")
+            else:
+                chunk["tags"] = "{}"
+            chunk["provider"] = "aws"
+            if "account_name" not in chunk.columns:
+                chunk["account_name"] = chunk.get("account_id", "")
+            chunks.append(self._validate_output(chunk))
 
-        rename_map = {}
-        for cur_col, norm_col in CUR2_COLUMN_MAP.items():
-            if cur_col in df.columns:
-                rename_map[cur_col] = norm_col
-
-        for norm_col, fallbacks in CUR2_FALLBACK_MAP.items():
-            if norm_col not in rename_map.values():
-                for fallback in fallbacks:
-                    if fallback in df.columns:
-                        rename_map[fallback] = norm_col
-                        break
-
-        df = df.rename(columns=rename_map)
-
-        # CUR 2.0 stores tags in a single resource_tags JSON column
-        if "resource_tags" in df.columns:
-            df["tags"] = df["resource_tags"].apply(self._normalize_tags)
-            df = df.drop(columns=["resource_tags"], errors="ignore")
-        else:
-            df["tags"] = "{}"
-
-        df["provider"] = "aws"
-        if "account_name" not in df.columns:
-            df["account_name"] = df.get("account_id", "")
-
-        return self._validate_output(df)
+        return pd.concat(chunks, ignore_index=True)
 
     def _get_needed_columns_v2(self, all_columns: list[str]) -> list[str]:
         needed = set()
